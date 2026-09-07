@@ -1,41 +1,44 @@
-from app.github.client import GitHubClient
 from app.github.context_builder import build_code_context
-from app.github.adapters import github_files_to_changed_files
+from app.models.pull_request import ChangedFile
 
 
-def main():
-    client = GitHubClient()
-
-    file_data = client.get_pull_request_files(
-        owner="octocat",
-        repo="Hello-World",
-        pull_number=1,
+def test_context_builder_builds_python_context():
+    changed_file = ChangedFile(
+        path="auth/login.py",
+        status="modified",
+        additions=2,
+        deletions=1,
+        patch="""@@ -8,3 +8,5 @@
++def login():
++    return True
+""",
     )
 
-    changed_files = github_files_to_changed_files(file_data)
+    source_code = """line 1
+line 2
+line 3
+line 4
+line 5
+line 6
+line 7
+def login():
+    return True
+line 10
+line 11
+line 12
+"""
 
-    for changed_file in changed_files:
-        source_code = client.get_file_content(
-            owner="octocat",
-            repo="Hello-World",
-            path=changed_file.path,
-            ref="7044a8a032e85b6ab611033b2ac8af7ce85805b2",
-        )
+    context = build_code_context(
+        changed_file,
+        source_code,
+    )
 
-        context = build_code_context(
-            changed_file,
-            source_code,
-        )
+    assert context.file_path == "auth/login.py"
+    assert context.language == "python"
+    assert context.changed_code == changed_file.patch
 
-        print("File:", context.file_path)
-        print("Language:", context.language)
+    assert "line 6" in context.surrounding_code
+    assert "def login():" in context.surrounding_code
+    assert "return True" in context.surrounding_code
 
-        print("\nChanged code:")
-        print(context.changed_code)
-
-        print("\nSurrounding source code:")
-        print(context.surrounding_code)
-
-
-if __name__ == "__main__":
-    main()
+    assert context.related_tests == []

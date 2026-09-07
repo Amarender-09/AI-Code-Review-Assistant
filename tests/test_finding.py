@@ -7,7 +7,7 @@ from app.models.finding import (
 )
 
 
-def main():
+def test_finding_model():
     finding = Finding(
         id="finding-001",
         category=FindingCategory.SECURITY,
@@ -26,9 +26,11 @@ def main():
         source=FindingSource.STATIC_ANALYZER,
     )
 
-    print("Finding:")
-    print(finding.model_dump())
-
-
-if __name__ == "__main__":
-    main()
+    assert finding.id == "finding-001"
+    assert finding.category == FindingCategory.SECURITY
+    assert finding.severity == FindingSeverity.HIGH
+    assert finding.confidence == 0.95
+    assert finding.location.file_path == "auth/login.py"
+    assert finding.location.start_line == 42
+    assert finding.location.end_line == 42
+    assert finding.source == FindingSource.STATIC_ANALYZER

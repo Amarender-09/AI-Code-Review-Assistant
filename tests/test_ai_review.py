@@ -2,21 +2,21 @@ from app.reviewers.ai_review import AIReviewEngine
 from app.reviewers.fake_provider import FakeAIProvider
 
 
-def main():
-
+def test_ai_review_engine_returns_findings():
     provider = FakeAIProvider()
-
     engine = AIReviewEngine(provider)
 
     result = engine.review(
         "Review this Python code for security problems."
     )
 
-    print("AI findings:", len(result.findings))
+    assert result.findings
+    assert len(result.findings) > 0
 
-    for finding in result.findings:
-        print(finding.model_dump())
+    finding = result.findings[0]
 
-
-if __name__ == "__main__":
-    main()
+    assert finding.title
+    assert finding.description
+    assert finding.category
+    assert finding.severity
+    assert 0 <= finding.confidence <= 1

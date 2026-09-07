@@ -7,50 +7,59 @@ from app.github.real_publisher import RealGitHubPublisher
 import app.github.publisher_factory as publisher_factory
 
 
-def main():
+def test_publisher_factory_uses_fake_publisher_in_dry_run():
+    original_value = os.environ.get("DRY_RUN")
 
-    # -----------------------------
-    # Test DRY_RUN = True
-    # -----------------------------
+    try:
+        os.environ["DRY_RUN"] = "true"
 
-    os.environ["DRY_RUN"] = "true"
+        importlib.reload(config)
 
-    importlib.reload(config)
+        publisher = publisher_factory.create_github_publisher()
 
-    publisher = publisher_factory.create_github_publisher()
+        assert isinstance(
+            publisher,
+            FakeGitHubPublisher,
+        )
 
-    print(
-        "DRY_RUN=true:",
-        type(publisher).__name__,
-    )
+    finally:
+        if original_value is None:
+            os.environ.pop("DRY_RUN", None)
+        else:
+            os.environ["DRY_RUN"] = original_value
 
-    assert isinstance(
-        publisher,
-        FakeGitHubPublisher,
-    )
-
-    # -----------------------------
-    # Test DRY_RUN = False
-    # -----------------------------
-
-    os.environ["DRY_RUN"] = "false"
-
-    importlib.reload(config)
-
-    publisher = publisher_factory.create_github_publisher()
-
-    print(
-        "DRY_RUN=false:",
-        type(publisher).__name__,
-    )
-
-    assert isinstance(
-        publisher,
-        RealGitHubPublisher,
-    )
-
-    print("\nPublisher factory test passed.")
+        importlib.reload(config)
 
 
-if __name__ == "__main__":
-    main()
+def test_publisher_factory_uses_real_publisher_when_dry_run_disabled():
+    original_value = os.environ.get("DRY_RUN")
+    original_token = os.environ.get("GITHUB_TOKEN")
+
+    try:
+        os.environ["DRY_RUN"] = "false"
+
+        # The factory creates GitHubClient without making an API request,
+        # so a real token is not needed for this test.
+        os.environ["GITHUB_TOKEN"] = "test-token"
+
+        importlib.reload(config)
+
+        publisher = publisher_factory.create_github_publisher()
+
+        assert isinstance(
+            publisher,
+            RealGitHubPublisher,
+        )
+
+    finally:
+        if original_value is None:
+            os.environ.pop("DRY_RUN", None)
+        else:
+            os.environ["DRY_RUN"] = original_value
+
+        if original_token is None:
+            os.environ.pop("GITHUB_TOKEN", None)
+        else:
+            os.environ["GITHUB_TOKEN"] = original_token
+
+        importlib.reload(config)

@@ -13,8 +13,7 @@ class BrokenAnalyzer:
         raise RuntimeError("Simulated analyzer failure")
 
 
-def main():
-
+def test_analyzer_runner_handles_analyzer_failure():
     source_code = """def process(user_input):
     result = eval(user_input)
     return result
@@ -33,20 +32,12 @@ def main():
         "example.py",
     )
 
-    print("Findings:", len(findings))
+    # SecurityAnalyzer should still run successfully.
+    assert len(findings) == 1
+    assert findings[0].category.value == "security"
 
-    for finding in findings:
-        print(
-            finding.category.value,
-            "|",
-            finding.title,
-        )
-
-    print("\nWarnings:", len(warnings))
-
-    for warning in warnings:
-        print(warning)
-
-
-if __name__ == "__main__":
-    main()
+    # The broken analyzer should produce a warning,
+    # not crash the entire review.
+    assert len(warnings) == 1
+    assert "BrokenAnalyzer failed" in warnings[0]
+    assert "Simulated analyzer failure" in warnings[0]

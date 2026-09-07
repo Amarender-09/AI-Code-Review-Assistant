@@ -3,8 +3,9 @@ import json
 from fastapi import APIRouter, HTTPException, Request
 
 from app.core.config import GITHUB_WEBHOOK_SECRET
-from app.github.webhook_security import verify_signature
 from app.github.webhook_parser import parse_pull_request_event
+from app.github.webhook_security import verify_signature
+from app.services.review_factory import create_pr_review_service
 
 
 router = APIRouter()
@@ -20,7 +21,9 @@ async def github_webhook(request: Request):
 
     payload_body = await request.body()
 
-    signature = request.headers.get("X-Hub-Signature-256")
+    signature = request.headers.get(
+        "X-Hub-Signature-256"
+    )
 
     if not verify_signature(
         payload_body,
@@ -40,7 +43,9 @@ async def github_webhook(request: Request):
             detail="Invalid JSON payload",
         )
 
-    event_type = request.headers.get("X-GitHub-Event")
+    event_type = request.headers.get(
+        "X-GitHub-Event"
+    )
 
     if event_type != "pull_request":
         return {
@@ -50,15 +55,19 @@ async def github_webhook(request: Request):
 
     action = payload.get("action")
 
-    if action not in {"opened", "synchronize", "reopened"}:
+    if action not in {
+        "opened",
+        "synchronize",
+        "reopened",
+    }:
         return {
             "message": "Pull request action ignored",
             "action": action,
         }
 
     try:
-        repository, pull_request, changed_files = parse_pull_request_event(
-            payload
+        repository, pull_request, changed_files = (
+            parse_pull_request_event(payload)
         )
     except (KeyError, TypeError, ValueError) as error:
         raise HTTPException(
@@ -66,12 +75,24 @@ async def github_webhook(request: Request):
             detail=f"Invalid pull request payload: {error}",
         )
 
+    review_service = create_pr_review_service()
+
+    try:
+        result = review_service.review_pull_request(
+            owner=repository.owner,
+            repo=repository.name,
+            pull_number=pull_request.number,
+        )
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Pull request review failed: {error}",
+        )
+
     return {
-        "message": "Pull request parsed successfully",
-        "repository": repository.model_dump(),
-        "pull_request": pull_request.model_dump(),
-        "changed_files": [
-            changed_file.model_dump()
-            for changed_file in changed_files
-        ],
+        "message": "Pull request review completed",
+        "repository": repository.full_name,
+        "pull_request": pull_request.number,
+        "changed_files_from_webhook": len(changed_files),
+        "review": result,
     }

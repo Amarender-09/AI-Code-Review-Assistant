@@ -1,7 +1,7 @@
 from app.analysis.security import SecurityAnalyzer
 
 
-def main():
+def test_security_analyzer_detects_eval():
     source_code = """def login(user_input):
     result = eval(user_input)
     return result
@@ -14,11 +14,12 @@ def main():
         "auth/login.py",
     )
 
-    print("Findings:", len(findings))
+    assert len(findings) == 1
 
-    for finding in findings:
-        print(finding.model_dump())
+    finding = findings[0]
 
-
-if __name__ == "__main__":
-    main()
+    assert finding.category.value == "security"
+    assert finding.severity.value == "high"
+    assert finding.location.file_path == "auth/login.py"
+    assert finding.location.start_line == 2
+    assert "eval" in finding.title.lower()

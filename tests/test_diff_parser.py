@@ -4,7 +4,7 @@ from app.github.diff_parser import (
 )
 
 
-def main():
+def test_get_changed_line_ranges():
     patch = """@@ -10,3 +10,5 @@
 +def login():
 +    return True
@@ -12,9 +12,10 @@ def main():
 
     ranges = get_changed_line_ranges(patch)
 
-    print("Changed ranges:")
-    print(ranges)
+    assert ranges == [(10, 5)]
 
+
+def test_extract_surrounding_code():
     source_code = """line 1
 line 2
 line 3
@@ -32,15 +33,19 @@ line 14
 line 15
 """
 
+    changed_ranges = [(10, 2)]
+
     surrounding_code = extract_surrounding_code(
         source_code,
-        ranges,
+        changed_ranges,
         context_lines=2,
     )
 
-    print("\nSurrounding code:")
-    print(surrounding_code)
+    expected = """line 8
+line 9
+def login():
+    return True
+line 12
+line 13"""
 
-
-if __name__ == "__main__":
-    main()
+    assert surrounding_code == expected

@@ -1,7 +1,7 @@
 from app.analysis.performance import PerformanceAnalyzer
 
 
-def main():
+def test_performance_analyzer_detects_list_concatenation():
     source_code = """def build_items(items):
     result = []
 
@@ -18,11 +18,12 @@ def main():
         "items.py",
     )
 
-    print("Findings:", len(findings))
+    assert len(findings) == 1
 
-    for finding in findings:
-        print(finding.model_dump())
+    finding = findings[0]
 
-
-if __name__ == "__main__":
-    main()
+    assert finding.category.value == "performance"
+    assert finding.severity.value == "medium"
+    assert finding.location.file_path == "items.py"
+    assert finding.location.start_line == 5
+    assert "concatenation" in finding.title.lower()

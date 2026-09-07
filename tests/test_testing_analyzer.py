@@ -3,8 +3,7 @@ from app.models.pull_request import ChangedFile, Repository
 from app.models.repository_context import RepositoryContext
 
 
-def main():
-
+def test_testing_analyzer_detects_missing_test():
     repository = Repository(
         owner="example",
         name="demo-project",
@@ -43,11 +42,12 @@ def main():
 
     findings = analyzer.analyze_repository(context)
 
-    print("Findings:", len(findings))
+    assert len(findings) == 1
 
-    for finding in findings:
-        print(finding.model_dump())
+    finding = findings[0]
 
-
-if __name__ == "__main__":
-    main()
+    assert finding.category.value == "testing"
+    assert finding.severity.value == "low"
+    assert finding.location.file_path == "auth/payment.py"
+    assert finding.location.start_line is None
+    assert "test" in finding.title.lower()

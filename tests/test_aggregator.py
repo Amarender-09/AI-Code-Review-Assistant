@@ -37,10 +37,8 @@ def create_finding(
     )
 
 
-def main():
-
+def test_finding_aggregator_removes_duplicates_and_similar_findings():
     findings = [
-
         # Exact duplicate ID
         create_finding(
             "duplicate-1",
@@ -51,7 +49,6 @@ def main():
             0.80,
             FindingSource.STATIC_ANALYZER,
         ),
-
         create_finding(
             "duplicate-1",
             FindingSeverity.LOW,
@@ -72,7 +69,6 @@ def main():
             0.90,
             FindingSource.STATIC_ANALYZER,
         ),
-
         create_finding(
             "ai-eval",
             FindingSeverity.HIGH,
@@ -99,22 +95,24 @@ def main():
 
     result = aggregator.aggregate(findings)
 
-    print("Input findings:", len(findings))
-    print("Final findings:", len(result))
+    # 5 input findings should become 3 final findings.
+    assert len(result) == 3
 
-    print("\nFinal findings:")
+    # The stronger AI finding should replace the weaker similar finding.
+    ids = {finding.id for finding in result}
 
-    for finding in result:
-        print(
-            finding.severity.value,
-            "|",
-            finding.category.value,
-            "|",
-            finding.id,
-            "| confidence:",
-            finding.confidence,
-        )
+    assert "ai-eval" in ids
+    assert "static-eval" not in ids
 
+    # Exact duplicate should appear only once.
+    assert sum(
+        finding.id == "duplicate-1"
+        for finding in result
+    ) == 1
 
-if __name__ == "__main__":
-    main()
+    # Findings should be sorted by severity.
+    assert [finding.severity.value for finding in result] == [
+        "high",
+        "medium",
+        "low",
+    ]

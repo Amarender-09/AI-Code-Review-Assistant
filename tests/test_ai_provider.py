@@ -1,17 +1,12 @@
 from app.reviewers.fake_provider import FakeAIProvider
 
 
-def main():
-
+def test_fake_ai_provider_returns_response():
     provider = FakeAIProvider()
 
     response = provider.generate_review(
         "Review this Python code for security problems."
     )
 
-    print("AI response:")
-    print(response)
-
-
-if __name__ == "__main__":
-    main()
+    assert response
+    assert isinstance(response, str)

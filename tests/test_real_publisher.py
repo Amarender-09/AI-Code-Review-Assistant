@@ -39,10 +39,7 @@ class FakeGitHubClient:
         }
 
 
-def main():
-
-    # Fake GitHub client.
-    # This means NO real GitHub request is made.
+def test_real_github_publisher_builds_and_sends_review():
     github_client = FakeGitHubClient()
 
     formatter = ReviewFormatter()
@@ -79,34 +76,22 @@ def main():
         findings=[finding],
     )
 
-    print("Publisher result:")
-    print(result)
+    assert result["id"] == 123
+    assert result["body"] == "Fake GitHub review"
 
-    print("\nGitHub request:")
-    print(github_client.calls[0])
+    assert len(github_client.calls) == 1
 
-    # Verify repository
-    assert github_client.calls[0]["owner"] == "Amarender-09"
-    assert github_client.calls[0]["repo"] == "AI-Code-Review-Test"
+    request = github_client.calls[0]
 
-    # Verify PR
-    assert github_client.calls[0]["pull_number"] == 1
+    assert request["owner"] == "Amarender-09"
+    assert request["repo"] == "AI-Code-Review-Test"
+    assert request["pull_number"] == 1
+    assert request["commit_id"] == "test-commit-123"
 
-    # Verify commit
-    assert github_client.calls[0]["commit_id"] == "test-commit-123"
-
-    # Verify comment
-    comments = github_client.calls[0]["comments"]
+    comments = request["comments"]
 
     assert len(comments) == 1
     assert comments[0]["path"] == "app.py"
     assert comments[0]["line"] == 12
     assert comments[0]["side"] == "RIGHT"
-
     assert "Unsafe eval usage" in comments[0]["body"]
-
-    print("\nReal publisher test passed.")
-
-
-if __name__ == "__main__":
-    main()

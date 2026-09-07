@@ -8,8 +8,7 @@ from app.reviewers.coordinator import ReviewCoordinator
 from app.reviewers.fake_provider import FakeAIProvider
 
 
-def main():
-
+def test_review_coordinator_combines_analyzer_and_ai_findings():
     source_code = """def process(user_input, items):
     result = eval(user_input)
 
@@ -45,22 +44,19 @@ def main():
         ai_prompt="Review this Python code.",
     )
 
-    print("Final findings:", len(findings))
+    assert warnings == []
 
-    for finding in findings:
-        print(
-            finding.severity.value,
-            "|",
-            finding.category.value,
-            "|",
-            finding.title,
-        )
+    # Static analyzers produce 3 findings.
+    # Fake AI provider produces 1 additional finding.
+    assert len(findings) == 4
 
-    print("\nWarnings:", len(warnings))
+    categories = {finding.category.value for finding in findings}
 
-    for warning in warnings:
-        print(warning)
+    assert "security" in categories
+    assert "bug" in categories
+    assert "performance" in categories
 
-
-if __name__ == "__main__":
-    main()
+    assert any(
+        finding.source.value == "ai_reviewer"
+        for finding in findings
+    )

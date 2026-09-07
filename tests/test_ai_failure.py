@@ -36,25 +36,21 @@ class InvalidFindingProvider(AIProvider):
 """
 
 
-def test_provider(provider):
-    engine = AIReviewEngine(provider)
+def test_invalid_json_response():
+    engine = AIReviewEngine(InvalidJSONProvider())
 
     try:
         engine.review("Review this code.")
-        print("ERROR: Invalid response was accepted")
-
+        assert False, "Expected ValueError for invalid JSON"
     except ValueError as error:
-        print("Controlled error:")
-        print(error)
+        assert "invalid JSON" in str(error)
 
 
-def main():
-    print("=== Invalid JSON ===")
-    test_provider(InvalidJSONProvider())
+def test_invalid_finding_response():
+    engine = AIReviewEngine(InvalidFindingProvider())
 
-    print("\n=== Invalid Finding ===")
-    test_provider(InvalidFindingProvider())
-
-
-if __name__ == "__main__":
-    main()
+    try:
+        engine.review("Review this code.")
+        assert False, "Expected ValueError for invalid finding"
+    except ValueError as error:
+        assert "validation" in str(error)

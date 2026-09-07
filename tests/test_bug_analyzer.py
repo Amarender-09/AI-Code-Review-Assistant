@@ -1,7 +1,7 @@
 from app.analysis.bug import BugAnalyzer
 
 
-def main():
+def test_bug_analyzer_detects_unreachable_code():
     source_code = """def calculate():
     value = 10
     return value
@@ -15,11 +15,12 @@ def main():
         "calculator.py",
     )
 
-    print("Findings:", len(findings))
+    assert len(findings) == 1
 
-    for finding in findings:
-        print(finding.model_dump())
+    finding = findings[0]
 
-
-if __name__ == "__main__":
-    main()
+    assert finding.category.value == "bug"
+    assert finding.severity.value == "medium"
+    assert finding.location.file_path == "calculator.py"
+    assert finding.location.start_line == 4
+    assert "unreachable" in finding.title.lower()

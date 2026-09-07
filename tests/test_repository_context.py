@@ -2,8 +2,7 @@ from app.models.repository_context import RepositoryContext
 from app.models.pull_request import ChangedFile, Repository
 
 
-def main():
-
+def test_repository_context_model():
     repository = Repository(
         owner="example",
         name="demo-project",
@@ -39,9 +38,16 @@ def main():
         ],
     )
 
-    print("Repository Context:")
-    print(context.model_dump())
+    assert context.repository.full_name == "example/demo-project"
+    assert context.repository.default_branch == "main"
 
+    assert len(context.changed_files) == 2
+    assert context.changed_files[0].path == "auth/login.py"
+    assert context.changed_files[1].path == "tests/test_login.py"
 
-if __name__ == "__main__":
-    main()
+    assert context.file_paths == [
+        "auth/login.py",
+        "tests/test_login.py",
+        "auth/user.py",
+        "README.md",
+    ]

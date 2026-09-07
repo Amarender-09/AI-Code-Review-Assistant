@@ -4,8 +4,7 @@ from app.analysis.runner import AnalyzerRunner
 from app.analysis.security import SecurityAnalyzer
 
 
-def main():
-
+def test_analyzer_runner_runs_all_analyzers():
     source_code = """def process(user_input, items):
     result = eval(user_input)
 
@@ -29,22 +28,13 @@ def main():
         "example.py",
     )
 
-    print("Findings:", len(findings))
+    assert len(findings) == 3
+    assert warnings == []
 
-    for finding in findings:
-        print(
-            finding.category.value,
-            "|",
-            finding.title,
-            "| line:",
-            finding.location.start_line,
-        )
+    categories = {finding.category.value for finding in findings}
 
-    print("\nWarnings:", len(warnings))
-
-    for warning in warnings:
-        print(warning)
-
-
-if __name__ == "__main__":
-    main()
+    assert categories == {
+        "security",
+        "bug",
+        "performance",
+    }
