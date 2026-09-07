@@ -5,10 +5,8 @@ from app.analysis.runner import AnalyzerRunner
 from app.analysis.security import SecurityAnalyzer
 
 from app.github.client import GitHubClient
-from app.github.publisher import ReviewCommentBuilder
 
 from app.reviewers.ai_review import AIReviewEngine
-from app.reviewers.formatter import ReviewFormatter
 from app.reviewers.openai_provider import OpenAIProvider
 from app.reviewers.validator import FindingValidator
 
@@ -53,11 +51,11 @@ def main():
         validator=validator,
     )
 
-    # Test Pull Request
+    # Real test Pull Request
     result = service.review_pull_request(
         owner="Amarender-09",
-        repo="AI-Code-Review-Test",
-        pull_number=1,
+        repo="AI-Code-Review-Assistant",
+        pull_number=2,
     )
 
     # Results
