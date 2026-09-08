@@ -78,7 +78,9 @@ def main():
         print(
             f"- {finding.severity.value} | "
             f"{finding.category.value} | "
-            f"{finding.title}"
+            f"{finding.title} | "
+            f"{finding.location.file_path}:"
+            f"{finding.location.start_line}"
         )
 
 

@@ -17,21 +17,21 @@ class FindingAggregator:
         findings: list[Finding],
     ) -> list[Finding]:
 
-        # First remove exact duplicate IDs.
-        unique_findings: dict[str, Finding] = {}
+        unique_findings = {}
 
+        # Remove exact duplicates by finding ID
         for finding in findings:
             if finding.id not in unique_findings:
                 unique_findings[finding.id] = finding
 
         deduplicated = list(unique_findings.values())
 
-        # Then remove findings that describe the same issue.
+        # Remove findings that represent the same underlying issue
         deduplicated = self._remove_similar_findings(
             deduplicated
         )
 
-        # Highest severity first.
+        # Sort by severity
         deduplicated.sort(
             key=lambda finding: SEVERITY_ORDER[
                 finding.severity.value
@@ -45,7 +45,7 @@ class FindingAggregator:
         findings: list[Finding],
     ) -> list[Finding]:
 
-        selected: list[Finding] = []
+        selected = []
 
         for finding in findings:
 
@@ -60,10 +60,8 @@ class FindingAggregator:
 
             existing = selected[duplicate_index]
 
-            if self._is_stronger(
-                finding,
-                existing,
-            ):
+            # Keep the stronger finding
+            if self._is_stronger(finding, existing):
                 selected[duplicate_index] = finding
 
         return selected
@@ -72,19 +70,24 @@ class FindingAggregator:
         self,
         finding: Finding,
         selected: list[Finding],
-    ) -> int | None:
+    ):
 
         for index, existing in enumerate(selected):
 
-            # Different files are normally different issues.
+            # Findings in different files are not duplicates
             if (
                 finding.location.file_path
                 != existing.location.file_path
             ):
                 continue
 
-            # Different categories can still describe
-            # the same underlying issue.
+            # Findings far apart are not duplicates
+            if not self._lines_are_close(
+                finding,
+                existing,
+            ):
+                continue
+
             if self._is_same_underlying_issue(
                 finding,
                 existing,
@@ -99,15 +102,6 @@ class FindingAggregator:
         second: Finding,
     ) -> bool:
 
-        # If both findings have line numbers,
-        # they should be close to each other.
-        if not self._lines_are_close(
-            first,
-            second,
-        ):
-            return False
-
-        # Compare the actual meaning of the finding.
         first_text = self._finding_text(first)
         second_text = self._finding_text(second)
 
@@ -119,7 +113,6 @@ class FindingAggregator:
         if similarity >= 0.5:
             return True
 
-        # Handle common wording differences.
         if self._share_issue_concept(
             first_text,
             second_text,
@@ -166,11 +159,9 @@ class FindingAggregator:
         if not first or not second:
             return 0.0
 
-        common_words = first.intersection(second)
-
-        return len(common_words) / min(
-            len(first),
-            len(second),
+        return (
+            len(first.intersection(second))
+            / min(len(first), len(second))
         )
 
     def _share_issue_concept(
@@ -181,7 +172,7 @@ class FindingAggregator:
 
         issue_concepts = [
             {"unreachable", "return"},
-            {"eval", "execution"},
+            {"eval"},
             {"sql", "injection"},
             {"password", "credential"},
             {"list", "concatenation"},
@@ -223,9 +214,7 @@ class FindingAggregator:
         }
 
         words = {
-            word.strip(
-                ".,:;()[]{}"
-            ).lower()
+            word.strip(".,:;()[]{}").lower()
             for word in text.split()
         }
 

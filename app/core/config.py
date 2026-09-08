@@ -1,5 +1,11 @@
 import os
 
+from dotenv import load_dotenv
+
+
+# Load variables from the local .env file
+load_dotenv()
+
 
 APP_NAME = os.getenv(
     "APP_NAME",
@@ -35,10 +41,7 @@ OPENAI_MODEL = os.getenv(
 )
 
 
-DRY_RUN = (
-    os.getenv(
-        "DRY_RUN",
-        "true",
-    ).lower()
-    == "true"
-)
+DRY_RUN = os.getenv(
+    "DRY_RUN",
+    "true",
+).lower() == "true"
