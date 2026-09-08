@@ -1,6 +1,6 @@
 import json
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 
 from app.core.config import GITHUB_WEBHOOK_SECRET
 from app.github.webhook_parser import parse_pull_request_event
@@ -11,8 +11,25 @@ from app.services.review_factory import create_pr_review_service
 router = APIRouter()
 
 
+def process_pull_request_review(
+    owner: str,
+    repo: str,
+    pull_number: int,
+):
+    review_service = create_pr_review_service()
+
+    review_service.review_pull_request(
+        owner=owner,
+        repo=repo,
+        pull_number=pull_number,
+    )
+
+
 @router.post("/webhooks/github")
-async def github_webhook(request: Request):
+async def github_webhook(
+    request: Request,
+    background_tasks: BackgroundTasks,
+):
     if not GITHUB_WEBHOOK_SECRET:
         raise HTTPException(
             status_code=500,
@@ -75,24 +92,16 @@ async def github_webhook(request: Request):
             detail=f"Invalid pull request payload: {error}",
         )
 
-    review_service = create_pr_review_service()
-
-    try:
-        result = review_service.review_pull_request(
-            owner=repository.owner,
-            repo=repository.name,
-            pull_number=pull_request.number,
-        )
-    except Exception as error:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Pull request review failed: {error}",
-        )
+    background_tasks.add_task(
+        process_pull_request_review,
+        repository.owner,
+        repository.name,
+        pull_request.number,
+    )
 
     return {
-        "message": "Pull request review completed",
+        "message": "Pull request received",
         "repository": repository.full_name,
         "pull_request": pull_request.number,
         "changed_files_from_webhook": len(changed_files),
-        "review": result,
     }

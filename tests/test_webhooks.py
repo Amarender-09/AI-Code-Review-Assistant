@@ -12,7 +12,7 @@ client = TestClient(app)
 
 def create_signature(payload: bytes, secret: str) -> str:
     digest = hmac.new(
-        secret.encode("utf-8"),
+        secret.encode(),
         payload,
         hashlib.sha256,
     ).hexdigest()
@@ -20,19 +20,31 @@ def create_signature(payload: bytes, secret: str) -> str:
     return f"sha256={digest}"
 
 
-def test_webhook_rejects_invalid_signature(monkeypatch):
+def test_webhook_rejects_missing_secret(monkeypatch):
     monkeypatch.setattr(
         "app.api.webhooks.GITHUB_WEBHOOK_SECRET",
-        "test-secret",
+        "",
     )
 
-    payload = json.dumps(
-        {
-            "action": "opened",
-            "repository": {},
-            "pull_request": {},
-        }
-    ).encode()
+    payload = b"{}"
+
+    response = client.post(
+        "/webhooks/github",
+        content=payload,
+    )
+
+    assert response.status_code == 500
+
+
+def test_webhook_rejects_invalid_signature(monkeypatch):
+    secret = "test-secret"
+
+    monkeypatch.setattr(
+        "app.api.webhooks.GITHUB_WEBHOOK_SECRET",
+        secret,
+    )
+
+    payload = b'{"action":"opened"}'
 
     response = client.post(
         "/webhooks/github",
@@ -46,26 +58,7 @@ def test_webhook_rejects_invalid_signature(monkeypatch):
     assert response.status_code == 403
 
 
-def test_webhook_rejects_missing_secret(monkeypatch):
-    monkeypatch.setattr(
-        "app.api.webhooks.GITHUB_WEBHOOK_SECRET",
-        None,
-    )
-
-    response = client.post(
-        "/webhooks/github",
-        content=b"{}",
-        headers={
-            "X-GitHub-Event": "pull_request",
-        },
-    )
-
-    assert response.status_code == 500
-
-
-def test_webhook_accepts_valid_signature_and_ignores_other_event(
-    monkeypatch,
-):
+def test_webhook_ignores_non_pull_request_event(monkeypatch):
     secret = "test-secret"
 
     monkeypatch.setattr(
@@ -73,7 +66,7 @@ def test_webhook_accepts_valid_signature_and_ignores_other_event(
         secret,
     )
 
-    payload = b"{}"
+    payload = b'{"action":"opened"}'
     signature = create_signature(payload, secret)
 
     response = client.post(
@@ -86,7 +79,11 @@ def test_webhook_accepts_valid_signature_and_ignores_other_event(
     )
 
     assert response.status_code == 200
-    assert response.json()["message"] == "GitHub event ignored"
+
+    data = response.json()
+
+    assert data["message"] == "GitHub event ignored"
+    assert data["event_type"] == "push"
 
 
 def test_webhook_processes_valid_pull_request(
@@ -100,7 +97,12 @@ def test_webhook_processes_valid_pull_request(
     )
 
     class FakeReviewService:
-        def review_pull_request(self, owner, repo, pull_number):
+        def review_pull_request(
+            self,
+            owner,
+            repo,
+            pull_number,
+        ):
             assert owner == "test-owner"
             assert repo == "test-repo"
             assert pull_number == 123
@@ -152,7 +154,10 @@ def test_webhook_processes_valid_pull_request(
     }
 
     payload_bytes = json.dumps(payload).encode()
-    signature = create_signature(payload_bytes, secret)
+    signature = create_signature(
+        payload_bytes,
+        secret,
+    )
 
     response = client.post(
         "/webhooks/github",
@@ -167,9 +172,7 @@ def test_webhook_processes_valid_pull_request(
 
     data = response.json()
 
-    assert data["message"] == "Pull request review completed"
+    assert data["message"] == "Pull request received"
     assert data["repository"] == "test-owner/test-repo"
     assert data["pull_request"] == 123
     assert data["changed_files_from_webhook"] == 0
-    assert data["review"]["pull_number"] == 123
-    assert data["review"]["head_commit"] == "abc123"
